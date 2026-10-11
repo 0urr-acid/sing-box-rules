@@ -41,18 +41,30 @@ jobs:
     - name: Generate release tag
       id: tag
       run: |
-        echo "release_tag=v$(date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+        echo "release_tag=$(date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
 
     - name: Create release and upload
       uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        name: "acid rules (${{ steps.tag.outputs.release_tag }})"
+        name: "acid-rules-${{ steps.tag.outputs.release_tag }}"
         body: |
-          Usage:
-                        https://github.com/0urr-acid/sing-box-rules/releases/latest/download/block.srs
+          Download links:
+          '''
+             https://github.com/0urr-acid/sing-box-rules/releases/latest/download/block-adguard.srs
+             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/block-ip.srs
+             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/block.srs
+             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/direct-ip.srs
+             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/direct.srs
+             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-direct-ip.srs
+             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-direct.srs
+             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-ip.srs
+             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-warp-ip.srs
+             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-warp.srs
+             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy.srs 
+          '''
         draft: false
         prerelease: false
         files: |
           output/*.srs
-          output_debug/*.srs
+          output_debug/*.json
