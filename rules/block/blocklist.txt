@@ -1,0 +1,4 @@
+;; https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/pro.mini-onlydomains.txt
+;; https://github.com/stamparm/trails/releases/latest/download/maltrail-malware-domains.txt
+?? https://github.com/runetfreedom/russia-v2ray-rules-dat/raw/refs/heads/release/sing-box/rule-set-geosite/geosite-category-games@ads.srs
+|| https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_15_DnsFilter/filter.txt

@@ -1,0 +1,45 @@
+name: Compile sing-box rules
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-compile-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Run processing script
+      run: |
+        python compile.py --debug
+
+    - name: Generate release tag
+      id: tag
+      run: |
+        echo "release_tag=v$(date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+
+    - name: Create release and upload
+      uses: softprops/action-gh-release@v3
+      with:
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        name: "acid rules (${{ steps.tag.outputs.release_tag }})"
+        body: |
+          Usage:
+                        https://github.com/0urr-acid/sing-box-rules/releases/latest/download/block.srs
+        draft: false
+        prerelease: false
+        files: |
+          output/*.srs
+          output_debug/*.srs
