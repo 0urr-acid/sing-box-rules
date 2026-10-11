@@ -21,6 +21,19 @@ jobs:
       with:
         python-version: '3.13'
 
+    - name: Install sing-box
+      run: |
+        echo "download sing-box..."
+        gh release download --repo Leadaxe/sing-box-lx --pattern "*linux-amd64.tar.gz" --output sing-box.tar.gz
+        
+        echo "unpacking..."
+        tar -xzf sing-box.tar.gz
+        
+        echo "installing..."
+        sudo mv sing-box-*/sing-box /usr/local/bin/
+        
+        sing-box version
+
     - name: Run processing script
       run: |
         python compile.py --debug
