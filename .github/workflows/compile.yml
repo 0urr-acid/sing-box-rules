@@ -50,7 +50,7 @@ jobs:
         name: "acid-rules-${{ steps.tag.outputs.release_tag }}"
         body: |
           Download links:
-          '''
+          ```
              https://github.com/0urr-acid/sing-box-rules/releases/latest/download/block-adguard.srs
              https://github:com/0urr-acid/sing-box-rules/releases/latest/download/block-ip.srs
              https://github:com/0urr-acid/sing-box-rules/releases/latest/download/block.srs
@@ -62,7 +62,7 @@ jobs:
              https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-warp-ip.srs
              https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-warp.srs
              https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy.srs 
-          '''
+          ```
         draft: false
         prerelease: false
         files: |
