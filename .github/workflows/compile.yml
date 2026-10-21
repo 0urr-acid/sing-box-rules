@@ -51,17 +51,17 @@ jobs:
         body: |
           Download links:
           ```
-             https://github.com/0urr-acid/sing-box-rules/releases/latest/download/block-adguard.srs
-             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/block-ip.srs
-             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/block.srs
-             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/direct-ip.srs
-             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/direct.srs
-             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-direct-ip.srs
-             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-direct.srs
-             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-ip.srs
-             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-warp-ip.srs
-             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy-warp.srs
-             https://github:com/0urr-acid/sing-box-rules/releases/latest/download/proxy.srs 
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/block-adguard.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/block-ip.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/block.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/direct-ip.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/direct.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-direct-ip.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-direct.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-ip.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-warp-ip.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-warp.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy.srs 
           ```
         draft: false
         prerelease: false
