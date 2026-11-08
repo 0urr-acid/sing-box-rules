@@ -61,13 +61,14 @@ jobs:
           https://github.com/0urr-acid/sing-box-rules/releases/latest/download/direct.srs
           https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-direct-ip.srs
           https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-direct.srs
-          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-ip.srs
           https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-warp-ip.srs
           https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-warp.srs
-          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy.srs 
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-fast-ip.srs 
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-fast.srs
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-main-ip.srs 
+          https://github.com/0urr-acid/sing-box-rules/releases/latest/download/proxy-main.srs
           ```
         draft: false
         prerelease: false
         files: |
           output/*.srs
-          output_debug/*.json

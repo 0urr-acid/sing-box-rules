@@ -1,0 +1,4 @@
+;; https://as32590.net/ipv4.txt
+;; https://as32590.net/ipv6.txt
+?? https://github.com/runetfreedom/russia-v2ray-rules-dat/raw/refs/heads/release/sing-box/rule-set-geosite/geosite-ea.srs
+?? https://github.com/runetfreedom/russia-v2ray-rules-dat/raw/refs/heads/release/sing-box/rule-set-geosite/geosite-steam.srs
