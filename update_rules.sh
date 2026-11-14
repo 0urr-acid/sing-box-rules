@@ -3,6 +3,42 @@
 GITHUB_USER="0urr-acid"
 GITHUB_REPO="sing-box-rules"
 DEST_DIR="/etc/sing-box-rules/"
+# Optional interface name, e.g. INTERFACE=tun0 ./update_rules.sh
+INTERFACE="${INTERFACE:-}"
+
+if command -v curl >/dev/null 2>&1; then
+    DOWNLOADER="curl"
+elif command -v wget >/dev/null 2>&1; then
+    DOWNLOADER="wget"
+else
+    echo "[ERROR] Install curl or wget to download rules."
+    exit 1
+fi
+
+DOWNLOAD_INTERFACE=""
+if [ -n "$INTERFACE" ]; then
+    if [ ! -d "/sys/class/net/$INTERFACE" ]; then
+        echo "[WARN] Interface $INTERFACE does not exist; using default routing."
+    elif [ "$DOWNLOADER" = "curl" ]; then
+        DOWNLOAD_INTERFACE="$INTERFACE"
+    else
+        echo "[WARN] Interface binding requires curl; using wget with default routing."
+    fi
+fi
+
+download() {
+    if [ "$DOWNLOADER" = "curl" ]; then
+        if [ -n "$DOWNLOAD_INTERFACE" ]; then
+            curl -fLsS --interface "if!$DOWNLOAD_INTERFACE" \
+                --user-agent "Script" --output "$1" "$2"
+        else
+            curl -fLsS --user-agent "Script" --output "$1" "$2"
+        fi
+    else
+        wget -O "$1" --header="User-Agent: Script" "$2"
+    fi
+}
+
 if ! mkdir -p "$DEST_DIR"; then
     echo "[ERROR] Failed to create $DEST_DIR."
     exit 1
@@ -18,7 +54,7 @@ API_JSON="$TMP_DIR/release.json"
 
 echo "[$(date)] Fetching release metadata..."
 
-if ! wget -qO "$API_JSON" --header="User-Agent: Script" "$API_URL"; then
+if ! download "$API_JSON" "$API_URL"; then
     echo "[ERROR] Failed to fetch release metadata from GitHub API."
     exit 1
 fi
@@ -75,7 +111,7 @@ while IFS= read -r FILE_NAME; do
 
     echo "Downloading: $FILE_NAME ..."
 
-    if ! wget -qO "$TMP_FILE" "$SRC_URL"; then
+    if ! download "$TMP_FILE" "$SRC_URL"; then
         echo "  [ERROR] Failed to download $FILE_NAME."
         FAILED_UPDATES=$((FAILED_UPDATES + 1))
         rm -f "$TMP_FILE"
