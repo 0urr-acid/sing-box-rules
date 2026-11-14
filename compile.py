@@ -70,7 +70,14 @@ def run_sing_box(command: str):
         return result.stdout.strip()
 
     except subprocess.CalledProcessError as e:
-        return None
+        logger.error("sing-box failed (exit %s): %s", e.returncode, command)
+        for output in (e.stdout, e.stderr):
+            if output:
+                logger.error(output.decode("utf-8", errors="replace").strip())
+        raise
+    except OSError as e:
+        logger.error("Cannot execute sing-box %r: %s", args.exec, e)
+        raise
 
 
 def is_ip(line):
@@ -144,21 +151,11 @@ def normalize_domains(
     domain_suffixes: list[str],
     domain_regex: list[str]
 ) -> tuple[list[str], list[str]]:
-    compiled_regexes = [re.compile(r) for r in domain_regex if r]
-
-    def is_regex_matched(val: str) -> bool:
-        return any(rx.search(val) for rx in compiled_regexes)
-
-    # 1. Предварительная очистка и фильтрация суффиксов по regex
-    raw_suffixes = {
+    # A regex matching the base domain need not cover its subdomains.
+    # Keep suffixes intact; sing-box validates regex using its own engine.
+    valid_suffixes = {
         s.lower().strip(".") for s in domain_suffixes if s and s.strip(".")
     }
-    valid_suffixes = []
-    for s in raw_suffixes:
-        if not is_regex_matched(s):
-            valid_suffixes.append(s)
-        else:
-            logger.info(f"Regex matched suffix: {s}")
 
     # 2. Нормализация domain_suffixes через Trie (удаление под-суффиксов)
     suffix_trie = {}
@@ -216,9 +213,6 @@ def normalize_domains(
     norm_domains = []
 
     for d in raw_domains:
-        if is_regex_matched(d):
-            logger.info(f"Regex matched domain: {d}")
-            continue
         if is_covered_by_suffix(d):
             logger.info(f"Domain suffix matched: {d}")
             continue
@@ -301,33 +295,72 @@ def normalize_ip_ranges(values: list[str]) -> list[str]:
     return results4 + results6
 
 
-def process_line(line: str, ip_addresses, domains, adguard_lists, srs_files):
-    line = line.split("#")[0].strip()
-
-    if line.startswith(";;"):
-        # Файл со списком доменов и ip, который мы качаем и сразу обрабатываем
-        for line in get_list_text_format(line.split(";;")[1].strip()):
-            process_line(line, ip_addresses, domains, adguard_lists, srs_files)
-        return
-    elif line.startswith("||"):
-        adguard_lists.append(get_list_adguard(line.split("||")[1].strip()))
-        return
-    elif line.startswith("??") and line.rstrip().endswith(".srs"):
-        srs_files.append(get_srs_file(line.split("??")[1].strip()))
+def process_line(line: str, ip_addresses, domains, domain_suffixes,
+                 domain_regex, adguard_lists, srs_files, source="<input>", line_number=1):
+    line = line.strip()
+    if not line or line.startswith("#"):
         return
 
-    if not line:
-        return
-    elif line.startswith("#"):
-        return
-    elif is_ip(line):
-        if "/" not in line:
-            line = line + "/32"
-        ip_addresses.append(line)
+    def fail(message):
+        raise ValueError(f"{source}:{line_number}: {message}")
+
+    aliases = {";;": "list", "||": "adguard", "??": "srs"}
+    kind = None
+    for prefix, name in aliases.items():
+        if line.startswith(prefix):
+            kind, value = name, line[len(prefix):].strip()
+            break
     else:
-        if line.startswith("www."):
-            line = line.strip("www.")
-        domains.append(line)
+        # Recognize bare IPv6 before splitting on a colon.
+        if is_ip(line):
+            kind, value = "ip_cidr", line
+        elif ":" in line:
+            kind, value = line.split(":", 1)
+            value = value.strip()
+        else:
+            # Preserve the historical shorthand for suffix rules.
+            kind, value = "domain_suffix", line.removeprefix("www.")
+
+    supported = {"domain", "domain_suffix", "domain_regex", "ip_cidr",
+                 "srs", "list", "adguard"}
+    if kind not in supported:
+        fail(f"Unknown rule prefix: {kind!r}")
+    if not value:
+        fail(f"Empty value for {kind}")
+
+    if kind == "ip_cidr":
+        try:
+            ip_addresses.append(str(ipaddress.ip_network(value, strict=False)))
+        except ValueError as e:
+            fail(f"Invalid IP/network {value!r}: {e}")
+    elif kind == "domain":
+        domains.append(value)
+    elif kind == "domain_suffix":
+        domain_suffixes.append(value)
+    elif kind == "domain_regex":
+        # Preserve case, backslashes, dots and # exactly as entered.
+        # Validation belongs to sing-box (Go regexp), not Python re.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_path = Path(tmpdir) / "regex.json"
+            output_path = Path(tmpdir) / "regex.srs"
+            input_path.write_text(json.dumps({
+                "version": 3, "rules": [{"domain_regex": [value]}]
+            }))
+            try:
+                run_sing_box(f"rule-set compile {input_path} -o {output_path}")
+                run_sing_box(f"rule-set match -f binary {output_path} validation.invalid")
+            except subprocess.CalledProcessError as e:
+                fail(f"Invalid domain_regex {value!r}: "
+                     f"{(e.stderr or b'').decode('utf-8', errors='replace').strip()}")
+        domain_regex.append(value)
+    elif kind == "list":
+        for number, nested_line in enumerate(get_list_text_format(value), 1):
+            process_line(nested_line, ip_addresses, domains, domain_suffixes,
+                         domain_regex, adguard_lists, srs_files, value, number)
+    elif kind == "adguard":
+        adguard_lists.append(get_list_adguard(value))
+    elif kind == "srs":
+        srs_files.append(get_srs_file(value))
 
 
 def get_rule(ip_addresses: list[str], domains: list[str], domain_suffixes: list[str], domain_regex: list[str]) -> list[str]:
@@ -436,16 +469,19 @@ def process_txt_file(txt_file):
 
     ip_addresses = []
     domains = []
+    domain_suffixes = []
+    domain_regex = []
     adguard_lists = []
     srs_files = []
 
     with open(txt_file, "r") as f:
-        while line := f.readline():
-            process_line(line, ip_addresses, domains, adguard_lists, srs_files)
+        for number, line in enumerate(f, 1):
+            process_line(line, ip_addresses, domains, domain_suffixes,
+                         domain_regex, adguard_lists, srs_files, str(txt_file), number)
     logger.info(
         f"Raw {txt_file.stem}: found {len(ip_addresses)} ip, {len(domains)} domains, {len(adguard_lists)} adguard files.")
 
-    return ip_addresses, domains, adguard_lists, srs_files
+    return ip_addresses, domains, domain_suffixes, domain_regex, adguard_lists, srs_files
 
 
 def process_dir(rule_dir):
@@ -457,27 +493,35 @@ def process_dir(rule_dir):
 
     dir_ip_addresses = []
     dir_domains = []
+    dir_domain_suffixes = []
+    dir_domain_regex = []
     dir_adguard_lists = []
     dir_srs_files = []
 
     for txt_file in rule_dir.glob("*.txt"):
-        ip_addresses, domains, adguard_lists, srs_files = process_txt_file(txt_file)
+        (ip_addresses, domains, domain_suffixes, domain_regex,
+         adguard_lists, srs_files) = process_txt_file(txt_file)
         dir_ip_addresses.extend(ip_addresses)
         dir_domains.extend(domains)
+        dir_domain_suffixes.extend(domain_suffixes)
+        dir_domain_regex.extend(domain_regex)
         dir_adguard_lists.extend(adguard_lists)
         dir_srs_files.extend(srs_files)
 
     logger.info(
         f"Raw result {rule_dir.name}: found {len(dir_ip_addresses)} ip, {len(dir_domains)} domains, {len(dir_adguard_lists)} adguard files.")
 
-    srs_ips, srs_domains, srs_domain_suffix, srs_domain_regex = parse_srs_files(srs_files)
+    srs_ips, srs_domains, srs_domain_suffix, srs_domain_regex = parse_srs_files(dir_srs_files)
     ip_addresses = normalize_ip_ranges(dir_ip_addresses + srs_ips)
     logger.info(f"Normalized: {len(ip_addresses)} ip")
 
-    domains, domain_suffix = normalize_domains(srs_domains, srs_domain_suffix + dir_domains, srs_domain_regex)
+    domain_regex = sorted(set(srs_domain_regex + dir_domain_regex))
+    domains, domain_suffix = normalize_domains(
+        srs_domains + dir_domains, srs_domain_suffix + dir_domain_suffixes, domain_regex
+    )
     logger.info(f"Normalized: {len(domains)} domains, {len(domain_suffix)} suffix")
 
-    ip_rules_dict, domain_rules_dict  = get_rule(ip_addresses, domains, domain_suffix, srs_domain_regex)
+    ip_rules_dict, domain_rules_dict  = get_rule(ip_addresses, domains, domain_suffix, domain_regex)
 
     generate_rules(rule_dir.name, domain_rules_dict, ip_rules_dict, dir_adguard_lists)
 
